@@ -5,7 +5,7 @@ import { FilterChips, ViewToggle } from '../../components/ui';
 import { StatusPill } from '../../components/StatusPill';
 import { TimelineChart, toneColor } from '../../components/TimelineChart';
 import { useAppState } from '../../state/store';
-import { fmt2, fmtDateShort, investorLp, investorNoticesAcrossFunds, NOTICE_LABEL } from '../../state/selectors';
+import { fmt2, fmtDateShort, investorNoticesAcrossFunds, NOTICE_LABEL } from '../../state/selectors';
 import tableStyles from '../../components/DataTable.module.css';
 
 function investorNoticeLabel(status: string) {
@@ -19,11 +19,11 @@ export function InvestorCapitalCalls() {
   const navigate = useNavigate();
   const [filter, setFilter] = useState('all');
   const [view, setView] = useState('list');
-  const lp = investorLp(state);
   const entries = investorNoticesAcrossFunds(state);
+  const noticeFor = (call: (typeof entries)[number]['call'], lpId: string) => call.notices.find((n) => n.lpId === lpId)!;
 
-  const filtered = entries.filter(({ call }) => {
-    const notice = call.notices.find((n) => n.lpId === lp.id)!;
+  const filtered = entries.filter(({ call, lpId }) => {
+    const notice = noticeFor(call, lpId);
     if (filter === 'pending') return notice.status === 'sent' || notice.status === 'not_sent';
     if (filter === 'paid') return notice.status === 'paid' || notice.status === 'defaulted_remedied';
     if (filter === 'overdue') return notice.status === 'overdue' || notice.status === 'grace_period' || notice.status === 'in_default';
@@ -32,13 +32,13 @@ export function InvestorCapitalCalls() {
 
   const counts = {
     all: entries.length,
-    pending: entries.filter(({ call }) => ['sent', 'not_sent'].includes(call.notices.find((n) => n.lpId === lp.id)!.status)).length,
-    paid: entries.filter(({ call }) => ['paid', 'defaulted_remedied'].includes(call.notices.find((n) => n.lpId === lp.id)!.status)).length,
-    overdue: entries.filter(({ call }) => ['overdue', 'grace_period', 'in_default'].includes(call.notices.find((n) => n.lpId === lp.id)!.status)).length,
+    pending: entries.filter(({ call, lpId }) => ['sent', 'not_sent'].includes(noticeFor(call, lpId).status)).length,
+    paid: entries.filter(({ call, lpId }) => ['paid', 'defaulted_remedied'].includes(noticeFor(call, lpId).status)).length,
+    overdue: entries.filter(({ call, lpId }) => ['overdue', 'grace_period', 'in_default'].includes(noticeFor(call, lpId).status)).length,
   };
 
-  const timelinePoints = entries.map(({ call }) => {
-    const notice = call.notices.find((n) => n.lpId === lp.id)!;
+  const timelinePoints = entries.map(({ call, lpId }) => {
+    const notice = noticeFor(call, lpId);
     const tone = notice.status === 'paid' ? 'success' : notice.status === 'overdue' || notice.status === 'in_default' ? 'danger' : 'warning';
     return {
       date: call.noticeDate,
@@ -88,8 +88,8 @@ export function InvestorCapitalCalls() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(({ call }) => {
-                const notice = call.notices.find((n) => n.lpId === lp.id)!;
+              {filtered.map(({ call, lpId }) => {
+                const notice = noticeFor(call, lpId);
                 const fund = state.funds[call.fundId];
                 return (
                   <tr key={call.id} className={tableStyles.rowClickable} onClick={() => navigate(`/investor/capital-calls/${call.id}`)}>

@@ -3,16 +3,15 @@ import { PageHeader } from '../../components/AppShell';
 import { Button, Card, KpiStrip } from '../../components/ui';
 import { StatusPill } from '../../components/StatusPill';
 import { useAppState } from '../../state/store';
-import { fmt2, investorLp, investorNoticesAcrossFunds, investorPortfolioRows, NOTICE_LABEL } from '../../state/selectors';
+import { fmt2, investorNoticesAcrossFunds, investorPortfolioRows, NOTICE_LABEL } from '../../state/selectors';
 
 export function InvestorDashboard() {
   const { state } = useAppState();
   const navigate = useNavigate();
-  const lp = investorLp(state);
   const rows = investorPortfolioRows(state);
   const notices = investorNoticesAcrossFunds(state);
-  const pending = notices.filter(({ call }) => {
-    const n = call.notices.find((x) => x.lpId === lp.id)!;
+  const pending = notices.filter(({ call, lpId }) => {
+    const n = call.notices.find((x) => x.lpId === lpId)!;
     return n.status === 'sent' || n.status === 'not_sent';
   });
 
@@ -39,8 +38,8 @@ export function InvestorDashboard() {
         <Card>
           <h4 style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Awaiting your payment</h4>
           {pending.length === 0 && <p className="muted" style={{ fontSize: 12 }}>Nothing due right now.</p>}
-          {pending.map(({ call }) => {
-            const n = call.notices.find((x) => x.lpId === lp.id)!;
+          {pending.map(({ call, lpId }) => {
+            const n = call.notices.find((x) => x.lpId === lpId)!;
             return (
               <div
                 key={call.id}

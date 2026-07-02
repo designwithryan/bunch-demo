@@ -6,7 +6,7 @@ import { StatusPill } from '../../components/StatusPill';
 import { NoticeDocument } from '../../components/NoticeDocument';
 import { Modal } from '../../components/Modal';
 import { useAppState } from '../../state/store';
-import { commitmentPctFor, investorLp } from '../../state/selectors';
+import { commitmentPctFor, investorLpForFund } from '../../state/selectors';
 
 function daysUntil(iso: string) {
   return Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000);
@@ -18,12 +18,12 @@ export function NoticeDetail() {
   const [flagOpen, setFlagOpen] = useState(false);
   const [flagNote, setFlagNote] = useState('');
 
-  const lp = investorLp(state);
   const call = state.calls[callId!];
   if (!call) return <p className="muted">Notice not found.</p>;
   const fund = state.funds[call.fundId];
-  const notice = call.notices.find((n) => n.lpId === lp.id);
-  if (!notice) return <p className="muted">You are not a recipient of this notice.</p>;
+  const lp = investorLpForFund(state, call.fundId);
+  const notice = lp && call.notices.find((n) => n.lpId === lp.id);
+  if (!lp || !notice) return <p className="muted">You are not a recipient of this notice.</p>;
 
   const days = daysUntil(call.dueDate);
   const statusLabel =

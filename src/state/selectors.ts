@@ -77,21 +77,33 @@ export function peerReviewCalls(state: AppState, fundId: string): CapitalCall[] 
   return callsForFund(state, fundId).filter((c) => c.status === 'under_review' || c.status === 'changes_requested' || c.peerStatus === 'approved');
 }
 
+// The investor is one person who may hold a separate LP entity per fund (e.g.
+// "Cherry Ventures LP" in Cherry Fund II, "Motive Ventures LP" in Motive Fund III).
+// LP.userId links each of those per-fund entities back to the same logged-in person.
+export function investorUserId(state: AppState): string {
+  return state.lps[state.currentUser.investorLpId]?.userId ?? state.currentUser.investorLpId;
+}
+
 export function investorLp(state: AppState): LP {
   return state.lps[state.currentUser.investorLpId];
 }
 
-export function investorFunds(state: AppState) {
-  const lp = investorLp(state);
-  return Object.values(state.funds).filter((f) => f.lpIds.includes(lp.id));
+export function investorLpForFund(state: AppState, fundId: string): LP | undefined {
+  const uid = investorUserId(state);
+  return fundLps(state, fundId).find((l) => l.userId === uid);
+}
+
+export function investorFunds(state: AppState): Fund[] {
+  const uid = investorUserId(state);
+  return Object.values(state.funds).filter((f) => f.lpIds.some((id) => state.lps[id]?.userId === uid));
 }
 
 const DISPATCHED: NoticeStatus[] = ['sent', 'paid', 'overdue', 'grace_period', 'in_default', 'defaulted_remedied', 'disputed'];
 
 export function investorPortfolioRows(state: AppState) {
-  const lp = investorLp(state);
   const distributedByFundStatus: Record<Fund['status'], number> = { Investing: 0, Active: 90000, Harvesting: 90000 };
   return investorFunds(state).map((fund) => {
+    const lp = investorLpForFund(state, fund.id)!;
     const called = allCallsList(state)
       .filter((c) => c.fundId === fund.id)
       .flatMap((c) => c.notices)
@@ -102,11 +114,14 @@ export function investorPortfolioRows(state: AppState) {
 }
 
 export function investorNoticesAcrossFunds(state: AppState) {
-  const lp = investorLp(state);
   const results: { call: CapitalCall; lpId: string }[] = [];
-  for (const call of allCallsList(state)) {
-    if (call.notices.some((n) => n.lpId === lp.id)) {
-      results.push({ call, lpId: lp.id });
+  for (const fund of investorFunds(state)) {
+    const lp = investorLpForFund(state, fund.id);
+    if (!lp) continue;
+    for (const call of allCallsList(state)) {
+      if (call.fundId === fund.id && call.notices.some((n) => n.lpId === lp.id)) {
+        results.push({ call, lpId: lp.id });
+      }
     }
   }
   return results;
