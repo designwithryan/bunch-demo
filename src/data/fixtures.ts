@@ -3,30 +3,55 @@ import type {
   CapitalCall,
   ChecklistItem,
   Fund,
+  LineItem,
   LP,
   NoticeLine,
 } from './types';
 
-const round2 = (n: number) => Math.round(n * 100) / 100;
+// Aggregates a call's notice-level breakdown into the fund-level Calculation
+// card rows (capital-calls-context.md §5) — computed from the actual notices
+// rather than hand-typed, so the two can never drift out of sync.
+export function standardLineItems(notices: NoticeLine[]): LineItem[] {
+  const capitalCall = Math.round(notices.reduce((s, n) => s + n.capitalCall, 0) * 100) / 100;
+  const managementFee = Math.round(notices.reduce((s, n) => s + n.managementFee, 0) * 100) / 100;
+  const workingCapital = Math.round(notices.reduce((s, n) => s + n.workingCapital, 0) * 100) / 100;
+  const items: LineItem[] = [];
+  if (capitalCall) items.push({ label: 'Capital call (pro-rata)', amount: capitalCall });
+  if (managementFee) items.push({ label: 'Management fee', amount: managementFee });
+  if (workingCapital) items.push({ label: 'Working capital', amount: workingCapital });
+  return items;
+}
 
+const round2 = (n: number) => Math.round(n * 100) / 100;
+export const WORKING_CAPITAL_RATE = 0.00015;
+
+// Every one-time / scheduled call breaks a per-LP notice into three itemized
+// components (capital-calls-context.md §5): the pro-rata capital-call draw
+// itself, the management fee, and a small working-capital reserve line. The
+// call's headline `amount` is the capital-call draw only — fees are shown as
+// separate additive lines, never folded silently into one number.
 function proRataNotices(
   lps: LP[],
   recipientIds: string[],
   rate: number,
+  options: { includeManagementFee?: boolean; includeWorkingCapital?: boolean } = {},
   overrides: Partial<Record<string, Partial<NoticeLine>>> = {}
 ): NoticeLine[] {
+  const { includeManagementFee = true, includeWorkingCapital = true } = options;
   const byId = Object.fromEntries(lps.map((lp) => [lp.id, lp]));
   return recipientIds.map((id) => {
     const lp = byId[id];
-    const amountDue = round2(lp.commitment * rate);
-    const workingCapital = round2(lp.commitment * 0.0001);
+    const capitalCall = round2(lp.commitment * rate);
+    const managementFee = includeManagementFee ? round2(lp.commitment * lp.feePct) : 0;
+    const workingCapital = includeWorkingCapital ? round2(lp.commitment * WORKING_CAPITAL_RATE) : 0;
     return {
       lpId: id,
       commitmentBefore: lp.commitment,
       commitmentAfter: lp.commitment,
+      capitalCall,
+      managementFee,
       workingCapital,
-      amountDue,
-      status: 'not_sent',
+      amountDue: round2(capitalCall + managementFee + workingCapital),
       ...overrides[id],
     };
   });
@@ -149,26 +174,24 @@ const seriesBChecklist: ChecklistItem[] = [
   { id: 'kyc', label: 'KYC/AML status current for every LP', state: 'escalated', note: 'Zara Quantum Solutions (NL) — KYC expired, escalated to Compliance.' },
 ];
 
+const seriesBNotices = proRataNotices(cherryLps, seriesBRecipients, SERIES_B_RATE, {}, {
+  'zara-quantum': { status: 'held_kyc', flagged: true, flagReason: 'KYC clearance expired — Netherlands, AFM renewal cycle.' },
+});
 export const seriesBCall: CapitalCall = {
   id: 'call-series-b',
   fundId: 'cherry-ii',
   type: 'one-time',
   purpose: 'Series B follow-on — Portfolio Co. X',
   linkedInvestment: 'Portfolio Co. X — Series B, €4.2M round',
-  amount: round2(seriesBRecipients.reduce((s, id) => s + cherryLps.find((l) => l.id === id)!.commitment * SERIES_B_RATE, 0)),
+  amount: round2(seriesBNotices.reduce((s, n) => s + n.capitalCall, 0)),
   noticeDate: '2026-06-01',
   dueDate: '2026-08-03',
   recipientMode: 'manual',
   recipientLpIds: seriesBRecipients,
   excludedLpIds: seriesBExcluded,
   excludedReason: 'Side-letter excuse right — sat out this investment',
-  lineItems: [
-    { label: 'Working capital (investment)', amount: 0 },
-    { label: 'Management fee', amount: 0 },
-  ],
-  notices: proRataNotices(cherryLps, seriesBRecipients, SERIES_B_RATE, {
-    'zara-quantum': { status: 'held_kyc', flagged: true, flagReason: 'KYC clearance expired — Netherlands, AFM renewal cycle.' },
-  }),
+  lineItems: standardLineItems(seriesBNotices),
+  notices: seriesBNotices,
   status: 'under_review',
   assignedReviewer: 'Tom Weber',
   peerStatus: 'pending',
@@ -179,22 +202,23 @@ export const seriesBCall: CapitalCall = {
 };
 
 const mgmtFeeRecipients = CHERRY_ORIGINAL_14.concat('cherry-ventures-lp');
+const mgmtFeeNotices = proRataNotices(cherryLps, mgmtFeeRecipients, 0, { includeWorkingCapital: false }).map((n, i) => ({
+  ...n,
+  status: (i % 4 === 3 ? 'sent' : 'paid') as NoticeLine['status'],
+}));
 export const mgmtFeeCall: CapitalCall = {
   id: 'call-mgmt-fee-q4',
   fundId: 'cherry-ii',
   type: 'scheduled',
   purpose: 'Quarterly Management Fee — Q4',
-  amount: round2(mgmtFeeRecipients.reduce((s, id) => s + cherryLps.find((l) => l.id === id)!.commitment * 0.025, 0)),
+  amount: round2(mgmtFeeNotices.reduce((s, n) => s + n.managementFee, 0)),
   noticeDate: '2026-09-24',
   dueDate: '2026-10-01',
   recipientMode: 'all',
   recipientLpIds: mgmtFeeRecipients,
   excludedLpIds: [],
-  lineItems: [{ label: 'Management fee (2.5% quarterly)', amount: 0 }],
-  notices: proRataNotices(cherryLps, mgmtFeeRecipients, 0.025).map((n, i) => ({
-    ...n,
-    status: i % 4 === 3 ? 'sent' : 'paid',
-  })),
+  lineItems: standardLineItems(mgmtFeeNotices),
+  notices: mgmtFeeNotices,
   status: 'approved',
   peerStatus: 'approved',
   reviewNotes: [],
@@ -226,9 +250,10 @@ export const equalisationCall: CapitalCall = {
       lpId: 'nordic-impact',
       commitmentBefore: 0,
       commitmentAfter: 310000,
-      workingCapital: 0,
+      capitalCall: 298400,
+      managementFee: 0,
+      workingCapital: 11600,
       amountDue: 310000,
-      status: 'not_sent',
     },
   ],
   status: 'under_review',
@@ -243,21 +268,22 @@ export const equalisationCall: CapitalCall = {
 };
 
 const bridgeRecipients = ['crimson-tide', 'azure-blue', 'eclipse-ventures', 'orion-starlight', 'sage-dynamics', 'velvet-sun', 'niamh-oconnor', 'electra-networks', 'nova-terra'];
+const bridgeNotices = proRataNotices(cherryLps, bridgeRecipients, 650000 / bridgeRecipients.reduce((s, id) => s + cherryLps.find((l) => l.id === id)!.commitment, 0));
 export const bridgeFinancingCall: CapitalCall = {
   id: 'call-bridge-financing',
   fundId: 'cherry-ii',
   type: 'one-time',
   purpose: 'Bridge Financing — Portfolio Co. Z',
   linkedInvestment: 'Portfolio Co. Z — Bridge note, €650,000',
-  amount: 650000,
+  amount: round2(bridgeNotices.reduce((s, n) => s + n.capitalCall, 0)),
   noticeDate: '2026-09-05',
   dueDate: '2026-09-26',
   recipientMode: 'manual',
   recipientLpIds: bridgeRecipients,
   excludedLpIds: ['marigold', 'zara-quantum', 'griffin-archer', 'felix-star', 'nordic-impact', 'cherry-ventures-lp'],
   excludedReason: 'Not participating in this bridge tranche',
-  lineItems: [{ label: 'Working capital (investment)', amount: 650000 }],
-  notices: proRataNotices(cherryLps, bridgeRecipients, 650000 / bridgeRecipients.reduce((s, id) => s + cherryLps.find((l) => l.id === id)!.commitment, 0)),
+  lineItems: standardLineItems(bridgeNotices),
+  notices: bridgeNotices,
   status: 'changes_requested',
   assignedReviewer: 'Tom Weber',
   peerStatus: 'changes_requested',
@@ -270,22 +296,27 @@ export const bridgeFinancingCall: CapitalCall = {
 };
 
 const defaultRecipients = ['crimson-tide', 'azure-blue', 'marigold', 'isla-rivera', 'griffin-archer', 'niamh-oconnor', 'nova-terra', 'cherry-ventures-lp'];
+const followOnNotices = proRataNotices(
+  cherryLps,
+  defaultRecipients,
+  500000 / defaultRecipients.reduce((s, id) => s + cherryLps.find((l) => l.id === id)!.commitment, 0),
+  {},
+  { 'griffin-archer': { status: 'in_default' } }
+).map((n) => (n.lpId === 'griffin-archer' ? n : { ...n, status: 'paid' as NoticeLine['status'] }));
 export const followOnDefaultCall: CapitalCall = {
   id: 'call-follow-on-w',
   fundId: 'cherry-ii',
   type: 'one-time',
   purpose: 'Follow-on — Portfolio Co. W',
   linkedInvestment: 'Portfolio Co. W — Follow-on, €1.2M round',
-  amount: 500000,
+  amount: round2(followOnNotices.reduce((s, n) => s + n.capitalCall, 0)),
   noticeDate: '2026-01-05',
   dueDate: '2026-02-02',
   recipientMode: 'manual',
   recipientLpIds: defaultRecipients,
   excludedLpIds: [],
-  lineItems: [{ label: 'Working capital (investment)', amount: 500000 }],
-  notices: proRataNotices(cherryLps, defaultRecipients, 500000 / defaultRecipients.reduce((s, id) => s + cherryLps.find((l) => l.id === id)!.commitment, 0), {
-    'griffin-archer': { status: 'in_default' },
-  }).map((n) => (n.lpId === 'griffin-archer' ? n : { ...n, status: 'paid' })),
+  lineItems: standardLineItems(followOnNotices),
+  notices: followOnNotices,
   status: 'partially_paid',
   peerStatus: 'approved',
   reviewNotes: [],
@@ -296,19 +327,20 @@ export const followOnDefaultCall: CapitalCall = {
 };
 
 const reconciledRecipients = ['crimson-tide', 'azure-blue', 'marigold', 'zara-quantum', 'eclipse-ventures', 'isla-rivera', 'orion-starlight', 'sage-dynamics', 'griffin-archer', 'velvet-sun', 'niamh-oconnor', 'electra-networks', 'felix-star', 'nova-terra'];
+const initialDrawdownNotices = proRataNotices(cherryLps, reconciledRecipients, 0.1).map((n) => ({ ...n, status: 'paid' as NoticeLine['status'] }));
 export const initialDrawdownCall: CapitalCall = {
   id: 'call-initial-drawdown',
   fundId: 'cherry-ii',
   type: 'one-time',
   purpose: 'Initial Drawdown',
-  amount: 292500,
+  amount: round2(initialDrawdownNotices.reduce((s, n) => s + n.capitalCall, 0)),
   noticeDate: '2026-01-15',
   dueDate: '2026-02-15',
   recipientMode: 'all',
   recipientLpIds: reconciledRecipients,
   excludedLpIds: [],
-  lineItems: [{ label: 'Working capital (formation + first investment)', amount: 292500 }],
-  notices: proRataNotices(cherryLps, reconciledRecipients, 0.1).map((n) => ({ ...n, status: 'paid' })),
+  lineItems: standardLineItems(initialDrawdownNotices),
+  notices: initialDrawdownNotices,
   status: 'reconciled',
   peerStatus: 'approved',
   reviewNotes: [],
@@ -322,20 +354,21 @@ export const cherryCalls = [seriesBCall, mgmtFeeCall, equalisationCall, bridgeFi
 
 // ---- Capital Calls: secondary funds -----------------------------------------
 
+const motiveSeriesCNotices = proRataNotices(motiveLps, motiveLps.map((l) => l.id), 210000 / motiveLps.reduce((s, l) => s + l.commitment, 0));
 export const motiveSeriesCCall: CapitalCall = {
   id: 'call-motive-series-c',
   fundId: 'motive-iii',
   type: 'one-time',
   purpose: 'Series C Initial Close',
   linkedInvestment: 'Portfolio Co. M — Series C',
-  amount: 210000,
+  amount: round2(motiveSeriesCNotices.reduce((s, n) => s + n.capitalCall, 0)),
   noticeDate: '2026-06-28',
   dueDate: '2026-07-24',
   recipientMode: 'all',
   recipientLpIds: motiveLps.map((l) => l.id),
   excludedLpIds: [],
-  lineItems: [{ label: 'Working capital (investment)', amount: 210000 }],
-  notices: proRataNotices(motiveLps, motiveLps.map((l) => l.id), 210000 / motiveLps.reduce((s, l) => s + l.commitment, 0)),
+  lineItems: standardLineItems(motiveSeriesCNotices),
+  notices: motiveSeriesCNotices,
   status: 'under_review',
   peerStatus: 'approved',
   reviewNotes: [],
@@ -344,19 +377,20 @@ export const motiveSeriesCCall: CapitalCall = {
   submittedAt: '2026-07-01T15:00:00Z',
 };
 
+const healInitialNotices = proRataNotices(healLps, healLps.map((l) => l.id), 150000 / healLps.reduce((s, l) => s + l.commitment, 0)).map((n) => ({ ...n, status: 'paid' as NoticeLine['status'] }));
 export const healReconciledCall: CapitalCall = {
   id: 'call-heal-initial',
   fundId: 'heal-i',
   type: 'one-time',
   purpose: 'Initial Drawdown',
-  amount: 150000,
+  amount: round2(healInitialNotices.reduce((s, n) => s + n.capitalCall, 0)),
   noticeDate: '2021-11-01',
   dueDate: '2021-12-01',
   recipientMode: 'all',
   recipientLpIds: healLps.map((l) => l.id),
   excludedLpIds: [],
-  lineItems: [{ label: 'Working capital (formation)', amount: 150000 }],
-  notices: proRataNotices(healLps, healLps.map((l) => l.id), 150000 / healLps.reduce((s, l) => s + l.commitment, 0)).map((n) => ({ ...n, status: 'paid' })),
+  lineItems: standardLineItems(healInitialNotices),
+  notices: healInitialNotices,
   status: 'reconciled',
   peerStatus: 'approved',
   reviewNotes: [],

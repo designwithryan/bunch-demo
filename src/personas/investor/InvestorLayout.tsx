@@ -1,17 +1,18 @@
 import { Outlet } from 'react-router-dom';
 import { AppShell } from '../../components/AppShell';
+import type { NavSection } from '../../components/Sidebar';
 import { useAppState } from '../../state/store';
 
-const sections = [
+const sections: NavSection[] = [
   {
     items: [
-      { label: 'Dashboard', to: '/investor/dashboard' },
-      { label: 'My Portfolio', to: '/investor/my-portfolio' },
-      { label: 'Capital Calls', to: '/investor/capital-calls' },
-      { label: 'Distributions', to: '/investor/distributions' },
-      { label: 'Documents', to: '/investor/documents' },
-      { label: 'Requests', to: '/investor/requests' },
-      { label: 'Payments', to: '/investor/payments' },
+      { label: 'Dashboard', to: '/investor/dashboard', icon: 'dashboard' },
+      { label: 'My Portfolio', to: '/investor/my-portfolio', icon: 'portfolio' },
+      { label: 'Capital Calls', to: '/investor/capital-calls', icon: 'capitalCalls' },
+      { label: 'Distributions', to: '/investor/distributions', icon: 'distributions' },
+      { label: 'Documents', to: '/investor/documents', icon: 'documents' },
+      { label: 'Requests', to: '/investor/requests', icon: 'requests' },
+      { label: 'Payments', to: '/investor/payments', icon: 'payments' },
     ],
   },
 ];

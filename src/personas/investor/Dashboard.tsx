@@ -12,7 +12,7 @@ export function InvestorDashboard() {
   const notices = investorNoticesAcrossFunds(state);
   const pending = notices.filter(({ call, lpId }) => {
     const n = call.notices.find((x) => x.lpId === lpId)!;
-    return n.status === 'sent' || n.status === 'not_sent';
+    return n.status === 'sent' || n.status === 'held_kyc';
   });
 
   return (
@@ -54,7 +54,7 @@ export function InvestorDashboard() {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ fontWeight: 600, fontSize: 13 }}>{fmt2(n.amountDue, state.funds[call.fundId].currency)}</span>
-                  <StatusPill label={NOTICE_LABEL[n.status]} />
+                  <StatusPill label={NOTICE_LABEL[n.status!]} />
                 </div>
               </div>
             );

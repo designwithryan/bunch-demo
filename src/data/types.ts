@@ -48,8 +48,12 @@ export type CallStatus =
   | 'reconciled'
   | 'cancelled';
 
+// A notice has no status at all until the call is approved and notices are
+// generated (per capital-calls-context.md §22: notices are "generated" at
+// APPROVED, not before). `undefined` means "not generated yet" — the call's
+// own review status (Pending review / Changes requested) is what's shown
+// for these rows, never a fabricated per-notice status like "Not sent".
 export type NoticeStatus =
-  | 'not_sent'
   | 'held_kyc'
   | 'sent'
   | 'paid'
@@ -69,9 +73,11 @@ export interface NoticeLine {
   lpId: string;
   commitmentBefore: number;
   commitmentAfter: number;
-  workingCapital: number;
-  amountDue: number;
-  status: NoticeStatus;
+  capitalCall: number; // pro-rata investment/working-capital draw
+  managementFee: number;
+  workingCapital: number; // small itemized reserve line, distinct from the capital-call draw
+  amountDue: number; // capitalCall + managementFee + workingCapital
+  status?: NoticeStatus;
   flagged?: boolean;
   flagReason?: string;
   overrideRationale?: string;
@@ -135,7 +141,7 @@ export interface CapitalCall {
   submittedAt?: string;
   approvedAt?: string;
   // scheduled-only
-  cadence?: 'Quarterly';
+  cadence?: 'Monthly' | 'Quarterly' | 'Half-year' | 'Yearly';
   annualFeeRate?: number;
   stepDownTrigger?: string;
   startDate?: string;

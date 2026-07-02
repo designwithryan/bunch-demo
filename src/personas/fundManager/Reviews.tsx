@@ -1,12 +1,14 @@
 import { Fragment, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '../../components/AppShell';
 import { Button, FilterChips, Segmented } from '../../components/ui';
 import { StatusPill } from '../../components/StatusPill';
 import { NoticeDocument } from '../../components/NoticeDocument';
+import { InfoCard, InfoRow, InfoLink, downloadTextFile } from '../../components/InfoCard';
 import { ChatDrawer } from '../../components/ChatDrawer';
 import { Modal } from '../../components/Modal';
 import { useAppState } from '../../state/store';
-import { callsForFund, callTotalDue, commitmentPctFor, fmt2, fmtDate, NOTICE_LABEL } from '../../state/selectors';
+import { callsForFund, callTotalDue, commitmentPctFor, fmt2, fmtDate, noticeStatusLabel } from '../../state/selectors';
 import type { CapitalCall, RevisionRequest } from '../../data/types';
 import tableStyles from '../../components/DataTable.module.css';
 
@@ -14,12 +16,14 @@ const CATEGORIES: RevisionRequest['category'][] = ['Amount', 'Dates', 'Wording',
 
 export function Reviews() {
   const { state, dispatch } = useAppState();
+  const navigate = useNavigate();
   const [filter, setFilter] = useState('all');
   const [level, setLevel] = useState<'fund' | 'investor'>('investor');
   const [selectedCallId, setSelectedCallId] = useState<string | null>(null);
   const [selectedLpId, setSelectedLpId] = useState<string | null>(null);
   const [revisionOpen, setRevisionOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [approvedModal, setApprovedModal] = useState<CapitalCall | null>(null);
 
   const calls = callsForFund(state, state.activeFundId).filter((c) => c.peerStatus !== 'not_submitted');
 
@@ -34,7 +38,7 @@ export function Reviews() {
   const fund = activeCall ? state.funds[activeCall.fundId] : undefined;
   const activeLpId = selectedLpId ?? activeCall?.notices[0]?.lpId ?? null;
   const activeNotice = activeCall?.notices.find((n) => n.lpId === activeLpId) ?? activeCall?.notices[0];
-  const flaggedNotice = activeCall?.notices.find((n) => n.flagged);
+  const flaggedNotices = activeCall?.notices.filter((n) => n.flagged) ?? [];
 
   const counts = {
     all: calls.length,
@@ -51,6 +55,7 @@ export function Reviews() {
   function approve() {
     if (!activeCall) return;
     dispatch({ type: 'PEER_APPROVE', callId: activeCall.id });
+    setApprovedModal(activeCall);
   }
 
   return (
@@ -136,7 +141,7 @@ export function Reviews() {
                             <td className="muted">—</td>
                             <td className="muted">—</td>
                             <td>
-                              <StatusPill label={n.flagged ? 'Flagged' : 'Calculated'} />
+                              <StatusPill label={n.flagged ? 'Flagged' : peerLabel(call.peerStatus)} />
                             </td>
                           </tr>
                         );
@@ -158,7 +163,9 @@ export function Reviews() {
         {activeCall && fund && activeNotice && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div>
-              <div className="eyebrow">{peerLabel(activeCall.peerStatus)}</div>
+              <div className="eyebrow" style={{ color: 'var(--warning-600)' }}>
+                {peerLabel(activeCall.peerStatus)}
+              </div>
               <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: 20, marginTop: 4 }}>{activeCall.purpose}</h3>
               <p className="muted" style={{ fontSize: 12 }}>
                 Submitted by {activeCall.submittedBy} · {activeCall.notices.length} LPs
@@ -172,40 +179,68 @@ export function Reviews() {
               </div>
             )}
 
-            <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: 16 }}>
-              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10 }}>Calculation</div>
+            <InfoCard
+              title="Calculation"
+              onDownload={() =>
+                downloadTextFile(
+                  `${activeCall.purpose.replace(/\s+/g, '-')}-calculation.txt`,
+                  activeCall.lineItems.map((li) => `${li.label}: ${fmt2(li.amount, fund.currency)}`).join('\n')
+                )
+              }
+            >
               {activeCall.lineItems.map((li) => (
-                <div key={li.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, padding: '4px 0' }}>
-                  <span className="muted">{li.label}</span>
-                  <span>{fmt2(callTotalDue(activeCall), fund.currency)}</span>
-                </div>
+                <InfoRow key={li.label} label={li.label} value={fmt2(li.amount, fund.currency)} />
               ))}
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, padding: '4px 0' }}>
-                <span className="muted">LPs flagged</span>
-                <span>
-                  {activeCall.notices.filter((n) => n.flagged).length} of {activeCall.notices.length}
-                </span>
+              <InfoRow
+                label="LPs flagged"
+                value={
+                  flaggedNotices.length ? `${flaggedNotices.length} of ${activeCall.notices.length} (${flaggedNotices[0].flagReason?.split(' — ')[0]})` : `0 of ${activeCall.notices.length}`
+                }
+              />
+              <InfoLink onClick={() => navigate('/fund-manager/capital-calls')}>View full LP-by-LP breakdown →</InfoLink>
+            </InfoCard>
+
+            <InfoCard
+              title="Notice template"
+              onDownload={() =>
+                downloadTextFile(
+                  `${activeCall.purpose.replace(/\s+/g, '-')}-notice-template.txt`,
+                  `Capital Call Notice — ${fund.name}\nTo: ${state.lps[activeNotice.lpId].name}\nAmount due: ${fmt2(activeNotice.amountDue, fund.currency)}`
+                )
+              }
+            >
+              <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                <NoticeDocument
+                  call={activeCall}
+                  notice={activeNotice}
+                  fund={fund}
+                  lp={state.lps[activeNotice.lpId]}
+                  commitmentPct={commitmentPctFor(state, activeCall, activeNotice.lpId)}
+                  scale="compact"
+                />
+                <div style={{ width: 140 }}>
+                  <p style={{ fontSize: 11, fontWeight: 500, marginBottom: 6 }}>{activeCall.notices.length} notices generated</p>
+                  <p className="muted" style={{ fontSize: 10, lineHeight: 1.5 }}>
+                    {flaggedNotices.length
+                      ? `${flaggedNotices.length} held pending KYC renewal — the other ${activeCall.notices.length - flaggedNotices.length} are ready to send on approval.`
+                      : `All ${activeCall.notices.length} are ready to send on approval.`}
+                  </p>
+                </div>
               </div>
-            </div>
+            </InfoCard>
 
-            <NoticeDocument
-              call={activeCall}
-              notice={activeNotice}
-              fund={fund}
-              lp={state.lps[activeNotice.lpId]}
-              commitmentPct={commitmentPctFor(state, activeCall, activeNotice.lpId)}
-              scale="zoom"
-            />
-
-            {flaggedNotice && (
-              <div style={{ background: 'var(--danger-100)', color: 'var(--danger-600)', padding: 10, borderRadius: 8, fontSize: 12 }}>
-                🚩 {state.lps[flaggedNotice.lpId].name} ({state.lps[flaggedNotice.lpId].country}) — {flaggedNotice.flagReason}
+            {flaggedNotices.length > 0 && (
+              <div style={{ background: 'var(--danger-100)', color: 'var(--danger-600)', padding: '10px 12px', borderRadius: 8, fontSize: 12 }}>
+                🚩 {flaggedNotices.length} LP{flaggedNotices.length > 1 ? 's' : ''} flagged — {state.lps[flaggedNotices[0].lpId].name} ({state.lps[flaggedNotices[0].lpId].country}),{' '}
+                {flaggedNotices[0].flagReason}
               </div>
             )}
 
             <div style={{ display: 'flex', gap: 10 }}>
-              <Button onClick={() => setRevisionOpen(true)}>Request Revision</Button>
-              <Button variant="primary" onClick={approve}>
+              <Button style={{ flex: 1, borderRadius: 999, justifyContent: 'center' }} onClick={() => setRevisionOpen(true)}>
+                Request Revision
+              </Button>
+              <Button variant="primary" style={{ flex: 1, borderRadius: 999, justifyContent: 'center' }} onClick={approve}>
                 Approve
               </Button>
             </div>
@@ -227,6 +262,19 @@ export function Reviews() {
       )}
 
       {activeCall && <ChatDrawer callId={activeCall.id} callLabel={activeCall.purpose} open={chatOpen} onClose={() => setChatOpen(false)} role="fundManager" />}
+
+      <Modal open={!!approvedModal} onClose={() => setApprovedModal(null)} title="Approved">
+        <p style={{ fontSize: 13, lineHeight: 1.6, marginBottom: 16 }}>
+          <b>{approvedModal?.purpose}</b> has been approved on your side and moved into Bunch's cross-fund Review Queue for
+          final sign-off. You can track its progress any time from the Capital Calls overview.
+        </p>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <Button onClick={() => setApprovedModal(null)}>Stay on Reviews</Button>
+          <Button variant="primary" onClick={() => navigate('/fund-manager/capital-calls')}>
+            Go to Capital Calls overview →
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }

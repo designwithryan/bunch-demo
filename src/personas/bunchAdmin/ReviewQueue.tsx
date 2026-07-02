@@ -112,17 +112,23 @@ export function ReviewQueue() {
 
         {active && fund && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {thread && thread.parked && thread.messages.length > 0 && (
-              <div style={{ background: 'var(--color-primary-tint-weak)', borderRadius: 10, padding: 12 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-primary)', marginBottom: 4 }}>
-                  💬 Open support request from {state.currentUser.fundManagerName}
-                </div>
-                <p style={{ fontSize: 12, marginBottom: 8 }}>{thread.messages[thread.messages.length - 1].body}</p>
-                <Button size="sm" variant="secondary" onClick={() => setChatOpen(true)}>
-                  Open thread &amp; Reply
-                </Button>
+            <div style={{ background: thread ? 'var(--color-primary-tint-weak)' : 'var(--neutral-100)', borderRadius: 10, padding: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: thread ? 'var(--color-primary)' : 'var(--color-ink-muted)', marginBottom: 4 }}>
+                💬 Support thread — {state.currentUser.fundManagerName}
               </div>
-            )}
+              {thread ? (
+                <>
+                  <p style={{ fontSize: 12, marginBottom: 8 }}>{thread.messages[thread.messages.length - 1].body}</p>
+                  <Button size="sm" variant="secondary" onClick={() => setChatOpen(true)}>
+                    {thread.parked ? 'Open thread & Reply' : 'View thread'}
+                  </Button>
+                </>
+              ) : (
+                <p className="muted" style={{ fontSize: 12 }}>
+                  No open support request from the fund manager for this call.
+                </p>
+              )}
+            </div>
             <div>
               <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: 18 }}>{active.purpose}</h3>
               <p className="muted" style={{ fontSize: 12 }}>

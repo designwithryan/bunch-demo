@@ -1,10 +1,11 @@
 import { NavLink } from 'react-router-dom';
 import { useAppState } from '../state/store';
+import { NavIcon, type NavIconName } from './NavIcon';
 import styles from './Sidebar.module.css';
 
 export interface NavSection {
   title?: string;
-  items: { label: string; to: string }[];
+  items: { label: string; to: string; icon: NavIconName }[];
 }
 
 export function Sidebar({
@@ -51,6 +52,9 @@ export function Sidebar({
                 to={item.to}
                 className={({ isActive }) => `${styles.item} ${isActive ? styles.itemActive : ''}`}
               >
+                <span className={styles.itemIcon}>
+                  <NavIcon name={item.icon} />
+                </span>
                 {item.label}
               </NavLink>
             ))}

@@ -28,6 +28,58 @@
   font-size: 15px;
 }
 
+.compact {
+  width: 200px;
+  flex-shrink: 0;
+  padding: 12px;
+  font-size: 7.5px;
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(13, 13, 20, 0.08);
+  pointer-events: none;
+  user-select: none;
+}
+.compact .brandRow {
+  gap: 5px;
+  margin-bottom: 3px;
+}
+.compact .eyebrowRow {
+  font-size: 5.5px;
+  padding-bottom: 6px;
+  margin-bottom: 6px;
+}
+.compact .to {
+  font-size: 7px;
+  margin-bottom: 5px;
+}
+.compact .para {
+  font-size: 6px;
+  line-height: 1.4;
+  margin-bottom: 8px;
+}
+.compact .amountBox {
+  padding: 7px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+}
+.compact .amountLabel {
+  font-size: 5.5px;
+}
+.compact .amountValue {
+  font-size: 12px;
+}
+.compact .detailRow {
+  padding: 2.5px 0;
+  font-size: 6px;
+}
+.compact .wireHeading {
+  font-size: 5.5px;
+  margin: 8px 0 3px;
+}
+.compact .footer {
+  font-size: 4.5px;
+  margin-top: 8px;
+}
+
 .brandRow {
   display: flex;
   align-items: center;

@@ -79,12 +79,26 @@
   color: var(--success-600);
   margin-top: 6px;
 }
+.checklistBox {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  background: var(--color-surface);
+}
 .checkRow {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   font-size: 13px;
   margin-bottom: 8px;
+}
+.checkRow:last-child {
+  margin-bottom: 0;
+}
+.checkRow input[type='checkbox'] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--color-primary);
 }
 
 .recipientBanner {

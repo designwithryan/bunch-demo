@@ -19,7 +19,7 @@ export function NoticeDocument({
   fund: Fund;
   lp: LP;
   commitmentPct: number;
-  scale?: 'thumbnail' | 'zoom' | 'full';
+  scale?: 'thumbnail' | 'compact' | 'zoom' | 'full';
 }) {
   const ref = `${fund.name.split(' ').map((w) => w[0]).join('').toUpperCase()}-${call.id.slice(-4).toUpperCase()}`;
 
@@ -50,6 +50,10 @@ export function NoticeDocument({
           <div className={styles.detailRow}>
             <span>Commitment %</span>
             <span>{commitmentPct.toFixed(2)}%</span>
+          </div>
+          <div className={styles.detailRow}>
+            <span>Recallable distributions</span>
+            <span>{fmt2(0, fund.currency)}</span>
           </div>
           <div className={styles.detailRow}>
             <span>Working capital</span>

@@ -1,4 +1,4 @@
-import type { AppState, CapitalCall, Fund, LP, NoticeStatus } from '../data/types';
+import type { AppState, CapitalCall, Fund, LP, NoticeLine, NoticeStatus } from '../data/types';
 
 export function fundLps(state: AppState, fundId: string): LP[] {
   const fund = state.funds[fundId];
@@ -14,18 +14,33 @@ export function allCallsList(state: AppState): CapitalCall[] {
   return state.callOrder.map((id) => state.calls[id]).filter(Boolean);
 }
 
+// Payment-state vocabulary per capital-calls-context.md §21/§22 ("Paid, Sent,
+// Overdue, Held" per the redesign vision doc's pill list, plus the fuller
+// per-LP default-handling states from the state machine). A notice only gets
+// one of these once it has actually been generated (i.e. the call has been
+// approved) — see `noticeStatusLabel` below for what shows before that.
 export const NOTICE_LABEL: Record<NoticeStatus, string> = {
-  not_sent: 'Not sent',
-  held_kyc: 'Held — flagged',
+  held_kyc: 'Held',
   sent: 'Sent',
   paid: 'Paid',
   overdue: 'Overdue',
-  grace_period: 'Grace period',
+  grace_period: 'Overdue — Grace period',
   in_default: 'In default',
   defaulted_remedied: 'Resolved (remedy)',
   disputed: 'Disputed',
   recalled: 'Recalled',
 };
+
+// What to show for a given call+notice pair, whether or not the notice has
+// been generated yet. Never fabricates a status — before approval there is no
+// per-LP state, so this surfaces the call's own review status instead
+// (capital-calls-context.md §22: notices are generated at APPROVED).
+export function noticeStatusLabel(call: CapitalCall, notice: NoticeLine): string {
+  if (notice.status) return NOTICE_LABEL[notice.status];
+  if (call.status === 'changes_requested') return 'Changes requested';
+  if (call.status === 'draft') return 'Draft';
+  return 'Pending review';
+}
 
 export const CALL_STATUS_LABEL: Record<CapitalCall['status'], string> = {
   draft: 'Draft',
@@ -107,19 +122,22 @@ export function investorPortfolioRows(state: AppState) {
     const called = allCallsList(state)
       .filter((c) => c.fundId === fund.id)
       .flatMap((c) => c.notices)
-      .filter((n) => n.lpId === lp.id && DISPATCHED.includes(n.status))
+      .filter((n) => n.lpId === lp.id && !!n.status && DISPATCHED.includes(n.status))
       .reduce((s, n) => s + n.amountDue, 0);
     return { fund, lp, called, distributed: distributedByFundStatus[fund.status] };
   });
 }
 
+// An LP only ever sees a notice once it has actually been generated (i.e. the
+// call has been approved) — never a call that's still being drafted or
+// reviewed internally.
 export function investorNoticesAcrossFunds(state: AppState) {
   const results: { call: CapitalCall; lpId: string }[] = [];
   for (const fund of investorFunds(state)) {
     const lp = investorLpForFund(state, fund.id);
     if (!lp) continue;
     for (const call of allCallsList(state)) {
-      if (call.fundId === fund.id && call.notices.some((n) => n.lpId === lp.id)) {
+      if (call.fundId === fund.id && call.notices.some((n) => n.lpId === lp.id && !!n.status)) {
         results.push({ call, lpId: lp.id });
       }
     }

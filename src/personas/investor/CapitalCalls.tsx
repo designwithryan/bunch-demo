@@ -6,12 +6,15 @@ import { StatusPill } from '../../components/StatusPill';
 import { TimelineChart, toneColor } from '../../components/TimelineChart';
 import { useAppState } from '../../state/store';
 import { fmt2, fmtDateShort, investorNoticesAcrossFunds, NOTICE_LABEL } from '../../state/selectors';
+import type { NoticeStatus } from '../../data/types';
 import tableStyles from '../../components/DataTable.module.css';
 
-function investorNoticeLabel(status: string) {
-  if (status === 'not_sent' || status === 'held_kyc') return 'Awaiting your payment';
-  if (status === 'sent' || status === 'overdue' || status === 'grace_period') return status === 'sent' ? 'Awaiting your payment' : NOTICE_LABEL[status as keyof typeof NOTICE_LABEL];
-  return NOTICE_LABEL[status as keyof typeof NOTICE_LABEL] ?? status;
+// investorNoticesAcrossFunds only ever returns notices that have actually
+// been generated, so `status` is always defined here — "Sent"/"Held" are
+// re-worded slightly for the LP-facing audience.
+function investorNoticeLabel(status: NoticeStatus) {
+  if (status === 'sent' || status === 'held_kyc') return 'Awaiting your payment';
+  return NOTICE_LABEL[status];
 }
 
 export function InvestorCapitalCalls() {
@@ -24,7 +27,7 @@ export function InvestorCapitalCalls() {
 
   const filtered = entries.filter(({ call, lpId }) => {
     const notice = noticeFor(call, lpId);
-    if (filter === 'pending') return notice.status === 'sent' || notice.status === 'not_sent';
+    if (filter === 'pending') return notice.status === 'sent' || notice.status === 'held_kyc';
     if (filter === 'paid') return notice.status === 'paid' || notice.status === 'defaulted_remedied';
     if (filter === 'overdue') return notice.status === 'overdue' || notice.status === 'grace_period' || notice.status === 'in_default';
     return true;
@@ -32,9 +35,9 @@ export function InvestorCapitalCalls() {
 
   const counts = {
     all: entries.length,
-    pending: entries.filter(({ call, lpId }) => ['sent', 'not_sent'].includes(noticeFor(call, lpId).status)).length,
-    paid: entries.filter(({ call, lpId }) => ['paid', 'defaulted_remedied'].includes(noticeFor(call, lpId).status)).length,
-    overdue: entries.filter(({ call, lpId }) => ['overdue', 'grace_period', 'in_default'].includes(noticeFor(call, lpId).status)).length,
+    pending: entries.filter(({ call, lpId }) => ['sent', 'held_kyc'].includes(noticeFor(call, lpId).status as string)).length,
+    paid: entries.filter(({ call, lpId }) => ['paid', 'defaulted_remedied'].includes(noticeFor(call, lpId).status as string)).length,
+    overdue: entries.filter(({ call, lpId }) => ['overdue', 'grace_period', 'in_default'].includes(noticeFor(call, lpId).status as string)).length,
   };
 
   const timelinePoints = entries.map(({ call, lpId }) => {
@@ -99,7 +102,7 @@ export function InvestorCapitalCalls() {
                     <td className="muted">{fmtDateShort(call.noticeDate)}</td>
                     <td className="muted">{fmtDateShort(call.dueDate)}</td>
                     <td>
-                      <StatusPill label={investorNoticeLabel(notice.status)} />
+                      <StatusPill label={investorNoticeLabel(notice.status!)} />
                     </td>
                   </tr>
                 );

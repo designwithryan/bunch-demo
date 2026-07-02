@@ -8,6 +8,7 @@ import { NoticeDocument } from '../../../components/NoticeDocument';
 import { ChatDrawer } from '../../../components/ChatDrawer';
 import { useAppState } from '../../../state/store';
 import { fmt2, fundLps } from '../../../state/selectors';
+import { standardLineItems, WORKING_CAPITAL_RATE } from '../../../data/fixtures';
 import type { CapitalCall, NoticeLine } from '../../../data/types';
 import styles from './Wizard.module.css';
 import tableStyles from '../../../components/DataTable.module.css';
@@ -15,6 +16,13 @@ import tableStyles from '../../../components/DataTable.module.css';
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
 type CallType = 'one-time' | 'scheduled';
+type Cadence = 'Monthly' | 'Quarterly' | 'Half-year' | 'Yearly';
+const CADENCE_OPTIONS: { value: Cadence; label: string; adverb: string }[] = [
+  { value: 'Monthly', label: 'Monthly', adverb: 'month' },
+  { value: 'Quarterly', label: 'Quarterly', adverb: 'quarter' },
+  { value: 'Half-year', label: 'Half-yearly', adverb: 'half-year' },
+  { value: 'Yearly', label: 'Yearly', adverb: 'year' },
+];
 
 export function NewCapitalCallWizard() {
   const { state, dispatch } = useAppState();
@@ -32,7 +40,8 @@ export function NewCapitalCallWizard() {
   const [dueDate, setDueDate] = useState('2026-09-05');
 
   const [startDate, setStartDate] = useState('2027-01-01 (next quarter)');
-  const [cadence] = useState('Quarterly');
+  const [cadence, setCadence] = useState<Cadence>('Quarterly');
+  const cadenceInfo = CADENCE_OPTIONS.find((c) => c.value === cadence)!;
   const [annualFeeRate, setAnnualFeeRate] = useState(2.5);
   const [stepDownTrigger, setStepDownTrigger] = useState('Reduce to 1.5% after investment period ends');
   const [includeMgmtFee, setIncludeMgmtFee] = useState(true);
@@ -51,21 +60,25 @@ export function NewCapitalCallWizard() {
   const notices: NoticeLine[] = useMemo(() => {
     return recipients.map((lpId) => {
       const lp = state.lps[lpId];
-      const amountDue = round2(lp.commitment * rate);
+      const capitalCall = type === 'one-time' ? round2(lp.commitment * rate) : 0;
+      const managementFee = type === 'scheduled' ? round2(lp.commitment * rate) : round2(lp.commitment * lp.feePct);
+      const workingCapital = type === 'one-time' ? round2(lp.commitment * WORKING_CAPITAL_RATE) : 0;
       const flagged = lp.kycStatus !== 'clear';
       return {
         lpId,
         commitmentBefore: lp.commitment,
         commitmentAfter: lp.commitment,
-        workingCapital: round2(lp.commitment * 0.0001),
-        amountDue,
-        status: flagged ? 'held_kyc' : 'not_sent',
+        capitalCall,
+        managementFee,
+        workingCapital,
+        amountDue: round2(capitalCall + managementFee + workingCapital),
+        status: flagged ? 'held_kyc' : undefined,
         flagged,
         flagReason: flagged ? `KYC ${lp.kycStatus === 'expired' ? 'clearance expired' : 'renewal due soon'} — ${lp.country}, ${lp.jurisdictionAuthority} renewal cycle.` : undefined,
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recipients.join(','), rate]);
+  }, [recipients.join(','), rate, type]);
 
   const totalCallAmount = notices.reduce((s, n) => s + n.amountDue, 0);
   const flaggedCount = notices.filter((n) => n.flagged).length;
@@ -85,16 +98,16 @@ export function NewCapitalCallWizard() {
       id,
       fundId,
       type,
-      purpose: type === 'one-time' ? purpose : `Quarterly Management Fee — ${cadence}`,
+      purpose: type === 'one-time' ? purpose : `${cadenceInfo.label} Management Fee`,
       linkedInvestment: type === 'one-time' ? linkedInvestment : undefined,
-      amount: totalCallAmount,
+      amount: round2(notices.reduce((s, n) => s + (type === 'one-time' ? n.capitalCall : n.managementFee), 0)),
       noticeDate: type === 'one-time' ? noticeDate : '2027-01-01',
       dueDate: type === 'one-time' ? dueDate : '2027-01-28',
       recipientMode,
       recipientLpIds: recipients,
       excludedLpIds: excluded,
       excludedReason: excluded.length ? 'Excluded by manual selection at creation' : undefined,
-      lineItems: [{ label: type === 'one-time' ? 'Working capital (investment)' : 'Management fee', amount: totalCallAmount }],
+      lineItems: standardLineItems(notices),
       notices,
       status: 'draft',
       peerStatus: 'not_submitted',
@@ -108,7 +121,7 @@ export function NewCapitalCallWizard() {
         { id: 'jurisdiction', label: 'Jurisdiction-specific overlays applied', state: 'pending' },
         { id: 'kyc', label: 'KYC/AML status current for every LP', state: flaggedCount ? 'pending' : 'clear' },
       ],
-      cadence: type === 'scheduled' ? 'Quarterly' : undefined,
+      cadence: type === 'scheduled' ? cadence : undefined,
       annualFeeRate: type === 'scheduled' ? annualFeeRate / 100 : undefined,
       stepDownTrigger: type === 'scheduled' ? stepDownTrigger : undefined,
       startDate: type === 'scheduled' ? startDate : undefined,
@@ -234,10 +247,16 @@ export function NewCapitalCallWizard() {
           </div>
           <div className={styles.field}>
             <label>Repeat cadence</label>
-            <input value={cadence} disabled />
+            <select value={cadence} onChange={(e) => setCadence(e.target.value as Cadence)}>
+              {CADENCE_OPTIONS.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
           </div>
           <div className={styles.field}>
-            <label>Fee rate applied per quarter (% of commitment)</label>
+            <label>Fee rate applied per {cadenceInfo.adverb} (% of commitment)</label>
             <input type="number" step="0.1" value={annualFeeRate} onChange={(e) => setAnnualFeeRate(Number(e.target.value))} />
           </div>
           <div className={styles.field}>
@@ -247,11 +266,13 @@ export function NewCapitalCallWizard() {
           </div>
           <div className={styles.field}>
             <label>Included line items</label>
-            <div className={styles.checkRow}>
-              <input type="checkbox" checked={includeMgmtFee} onChange={(e) => setIncludeMgmtFee(e.target.checked)} /> Management fee
-            </div>
-            <div className={styles.checkRow}>
-              <input type="checkbox" checked={includeExpenses} onChange={(e) => setIncludeExpenses(e.target.checked)} /> Recurring fund expenses
+            <div className={styles.checklistBox}>
+              <div className={styles.checkRow}>
+                <input type="checkbox" checked={includeMgmtFee} onChange={(e) => setIncludeMgmtFee(e.target.checked)} /> Management fee
+              </div>
+              <div className={styles.checkRow}>
+                <input type="checkbox" checked={includeExpenses} onChange={(e) => setIncludeExpenses(e.target.checked)} /> Recurring fund expenses
+              </div>
             </div>
           </div>
           <div className={styles.actionRow}>

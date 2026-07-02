@@ -1,16 +1,17 @@
 import { Outlet } from 'react-router-dom';
 import { AppShell } from '../../components/AppShell';
+import type { NavSection } from '../../components/Sidebar';
 import { useAppState } from '../../state/store';
 
-const sections = [
+const sections: NavSection[] = [
   {
     items: [
-      { label: 'Dashboard', to: '/bunch-admin/dashboard' },
-      { label: 'Review Queue', to: '/bunch-admin/review-queue' },
-      { label: 'Escalations', to: '/bunch-admin/escalations' },
-      { label: 'All Funds / Clients', to: '/bunch-admin/all-funds' },
-      { label: 'Compliance Oversight', to: '/bunch-admin/compliance-oversight' },
-      { label: 'Account Management', to: '/bunch-admin/account-management' },
+      { label: 'Dashboard', to: '/bunch-admin/dashboard', icon: 'dashboard' },
+      { label: 'Review Queue', to: '/bunch-admin/review-queue', icon: 'reviewQueue' },
+      { label: 'Escalations', to: '/bunch-admin/escalations', icon: 'escalations' },
+      { label: 'All Funds / Clients', to: '/bunch-admin/all-funds', icon: 'allFunds' },
+      { label: 'Compliance Oversight', to: '/bunch-admin/compliance-oversight', icon: 'complianceOversight' },
+      { label: 'Account Management', to: '/bunch-admin/account-management', icon: 'accountManagement' },
     ],
   },
 ];

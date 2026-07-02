@@ -104,7 +104,7 @@ function reducer(state: AppState, action: Action): AppState {
       const call = state.calls[action.callId];
       if (!call) return state;
       const notices = call.notices.map((n) =>
-        n.status === 'not_sent' ? { ...n, status: 'sent' as const } : n
+        !n.status ? { ...n, status: 'sent' as const } : n
       );
       const updated: CapitalCall = { ...call, notices, status: 'notices_sent', approvedAt: new Date().toISOString() };
       return { ...state, calls: { ...state.calls, [call.id]: updated } };
@@ -142,7 +142,7 @@ function reducer(state: AppState, action: Action): AppState {
         overdue: 'grace_period',
         grace_period: 'in_default',
       };
-      const nextStatus = next[notice.status] ?? notice.status;
+      const nextStatus = next[notice.status ?? ''] ?? notice.status;
       const updated = updateNotice(call, action.lpId, { status: nextStatus });
       return { ...state, calls: { ...state.calls, [call.id]: updated } };
     }
