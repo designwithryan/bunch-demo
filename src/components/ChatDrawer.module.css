@@ -1,0 +1,97 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 17, 21, 0.15);
+  z-index: 90;
+}
+
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 380px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-pop);
+  z-index: 91;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  padding: var(--space-16);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.headerTitle {
+  font-size: 14px;
+  font-weight: 700;
+}
+.headerSub {
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  margin-top: 2px;
+}
+
+.parkedBanner {
+  background: var(--warning-100);
+  color: #92600a;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-16);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.msg {
+  max-width: 84%;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.msgFm {
+  align-self: flex-start;
+  background: var(--neutral-100);
+  color: var(--color-ink);
+}
+.msgBunch {
+  align-self: flex-end;
+  background: var(--color-primary);
+  color: #fff;
+}
+.msgMeta {
+  font-size: 10px;
+  color: var(--color-ink-faint);
+  margin-top: 3px;
+}
+.msgFm .msgMeta {
+  align-self: flex-start;
+}
+
+.footer {
+  border-top: 1px solid var(--color-border);
+  padding: var(--space-12);
+  display: flex;
+  gap: 8px;
+}
+.footer input {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 12.5px;
+}

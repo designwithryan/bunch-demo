@@ -1,0 +1,119 @@
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: var(--space-24);
+  align-items: flex-start;
+  margin-top: var(--space-24);
+}
+
+.row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-24);
+}
+
+.row3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: var(--space-24);
+}
+
+.cardTitle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: var(--space-16);
+}
+.cardTitle a {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-primary);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.attentionItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--neutral-100);
+}
+.attentionItem:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+.attentionBody {
+  flex: 1;
+  font-size: 12.5px;
+}
+.attentionSub {
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  margin-top: 2px;
+}
+.attentionAction {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-primary);
+  white-space: nowrap;
+}
+
+.statRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12.5px;
+  padding: 6px 0;
+}
+.statRow span:last-child {
+  font-weight: 600;
+}
+
+.progress {
+  height: 6px;
+  background: var(--neutral-100);
+  border-radius: 4px;
+  margin: 6px 0 12px;
+  overflow: hidden;
+}
+.progressBar {
+  height: 100%;
+  background: var(--color-primary);
+}
+
+.tabRow {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.tabBtn {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  color: var(--color-ink-muted);
+}
+.tabBtnActive {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.taskItem {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--neutral-100);
+  font-size: 12.5px;
+}
+.taskMeta {
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  margin-top: 2px;
+}

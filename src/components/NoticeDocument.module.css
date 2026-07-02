@@ -1,0 +1,109 @@
+.doc {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  color: var(--color-ink);
+}
+
+.full {
+  padding: var(--space-32);
+  max-width: 480px;
+}
+.zoom {
+  padding: var(--space-24);
+  width: 100%;
+  max-width: 420px;
+}
+.thumbnail {
+  padding: 12px;
+  font-size: 8px;
+  pointer-events: none;
+  user-select: none;
+}
+.thumbnail .amountBox {
+  padding: 8px;
+}
+.thumbnail .amountValue {
+  font-size: 15px;
+}
+
+.brandRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.eyebrowRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-ink-faint);
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+}
+
+.to {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.para {
+  color: var(--color-ink-muted);
+  line-height: 1.6;
+  margin-bottom: 14px;
+}
+
+.amountBox {
+  background: var(--color-primary-tint-weak);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  margin-bottom: 14px;
+}
+.amountLabel {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-ink-muted);
+}
+.amountValue {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--color-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.detailRow {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--neutral-100);
+}
+.detailRow span:first-child {
+  color: var(--color-ink-muted);
+}
+.detailRow span:last-child {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.wireHeading {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 14px 0 4px;
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 16px;
+  font-size: 9px;
+  color: var(--color-ink-faint);
+}

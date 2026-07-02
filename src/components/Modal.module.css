@@ -1,0 +1,42 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 17, 21, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 24px;
+}
+
+.panel {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-pop);
+  width: 100%;
+  max-width: 480px;
+  padding: var(--space-24);
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.panelWide {
+  max-width: 640px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--space-16);
+}
+
+.closeBtn {
+  color: var(--color-ink-muted);
+  font-size: 18px;
+  line-height: 1;
+  padding: 4px;
+}
+.closeBtn:hover {
+  color: var(--color-ink);
+}
