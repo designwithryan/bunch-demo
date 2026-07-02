@@ -62,23 +62,24 @@
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: minmax(0, 1fr);
-  gap: var(--space-32);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-16) var(--space-24);
+  gap: 16px;
 }
 .kpiItem {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  min-width: 0;
 }
 .kpiLabel {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--color-ink-muted);
 }
 .kpiValue {
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 600;
   color: var(--color-ink);
 }
