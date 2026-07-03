@@ -2,7 +2,7 @@
 
 A clickable, interactive prototype of a redesigned **Capital Call Creation & Execution** experience for [bunch](https://bunch.capital), a European private-markets fund administration platform. Built from a from-scratch UX/product spec (not a Bunch production artifact), then implemented in React from a full Figma design covering three personas and 18 screens.
 
-**Live demo:** https://designwithryan.github.io/bunch-demo/
+**Live demo:** https://bunch-demo.ryanmohammad.com
 
 ## What this is
 
